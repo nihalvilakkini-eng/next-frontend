@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
+import { forwardBackendResponse, getBackendUrl } from "@/lib/api-proxy";
 
 export async function POST(request: NextRequest) {
     try {
@@ -15,9 +16,17 @@ export async function POST(request: NextRequest) {
         }
 
         const body = await request.json();
+        const backendUrl = getBackendUrl();
+
+        if (!backendUrl) {
+            return NextResponse.json(
+                { success: false, message: "Backend URL is missing or invalid for this environment" },
+                { status: 500 }
+            );
+        }
 
         const response = await fetch(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/orders`,
+            `${backendUrl}/api/orders`,
             {
                 method: "POST",
                 headers: {
@@ -28,13 +37,7 @@ export async function POST(request: NextRequest) {
             }
         );
 
-        const data = await response.json();
-
-        console.log("CREATE ORDER RESPONSE:", data);
-
-        return NextResponse.json(data, {
-            status: response.status,
-        });
+        return forwardBackendResponse(response);
     } catch (error) {
         console.error("CREATE ORDER ERROR:", error);
 
@@ -58,8 +61,17 @@ export async function GET() {
             );
         }
 
+        const backendUrl = getBackendUrl();
+
+        if (!backendUrl) {
+            return NextResponse.json(
+                { success: false, message: "Backend URL is missing or invalid for this environment" },
+                { status: 500 }
+            );
+        }
+
         const response = await fetch(
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/orders/my-orders`,
+            `${backendUrl}/api/orders/my-orders`,
             {
                 method: "GET",
                 headers: {
@@ -69,13 +81,7 @@ export async function GET() {
             }
         );
 
-        const data = await response.json();
-
-        console.log("MY ORDERS RESPONSE:", data);
-
-        return NextResponse.json(data, {
-            status: response.status,
-        });
+        return forwardBackendResponse(response);
     } catch (error) {
         console.error("GET ORDERS ERROR:", error);
 

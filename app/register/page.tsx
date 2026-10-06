@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FiEye, FiEyeOff } from "react-icons/fi";
+import { isJsonObject, readResponseBody } from "@/lib/api-response";
 
 const namePattern = /^\p{L}[\p{L}\p{M}]*(?:[ '\u2019-]\p{L}[\p{L}\p{M}]*)*$/u;
 
@@ -59,17 +60,18 @@ export default function RegisterPage() {
             return;
         }
 
+        if (password.length < 8) {
+            setError("Password must be at least 8 characters");
+            return;
+        }
+
+        if (!phone.trim()) {
+            setError("Phone number is required");
+            return;
+        }
+
         try {
             setLoading(true);
-
-            const backendUrl =
-                process.env.NEXT_PUBLIC_BACKEND_URL;
-
-            console.log("BACKEND URL:", backendUrl);
-            console.log(
-                "REGISTER URL:",
-                `${backendUrl}/api/auth/register`
-            );
 
             const formData = new FormData();
 
@@ -78,57 +80,32 @@ export default function RegisterPage() {
             formData.append("email", email.trim());
             formData.append("password", password);
             formData.append("phone", phone.trim());
+            formData.append("role", "user");
 
             if (profileImage) {
                 formData.append("profileImage", profileImage);
             }
 
-            const response = await fetch(
-                `${backendUrl}/api/auth/register`,
-                {
-                    method: "POST",
-                    body: formData,
-                }
-            );
+            const response = await fetch("/api/auth/register", {
+                method: "POST",
+                body: formData,
+                cache: "no-store",
+            });
 
-            console.log(
-                "REGISTER STATUS:",
-                response.status
-            );
+            const body = await readResponseBody(response);
 
-            const text = await response.text();
-
-            console.log(
-                "REGISTER RESPONSE:",
-                text
-            );
-
-            let data;
-
-            try {
-                data = JSON.parse(text);
-            } catch {
-                console.error(
-                    "Backend returned non-JSON response:",
-                    text
-                );
-
-                setError(
-                    "Server returned an invalid response"
-                );
-
+            if (!body.isJson || !isJsonObject(body.data)) {
+                setError("Registration service returned an invalid response");
                 return;
             }
 
-            console.log(
-                "REGISTER DATA:",
-                data
-            );
+            const data = body.data;
 
-            if (!response.ok) {
+            if (!response.ok || data.success === false) {
                 setError(
-                    data.message ||
-                    "Registration failed"
+                    typeof data.message === "string"
+                        ? data.message
+                        : "Registration failed"
                 );
 
                 return;
@@ -241,6 +218,7 @@ export default function RegisterPage() {
 
                         <input
                             type="email"
+                            required
                             value={email}
                             onChange={(e) =>
                                 setEmail(e.target.value)
@@ -264,6 +242,8 @@ export default function RegisterPage() {
                         <div style={{ position: "relative", marginTop: "5px" }}>
                             <input
                                 type={showPassword ? "text" : "password"}
+                                required
+                                minLength={8}
                                 value={password}
                                 onChange={(e) =>
                                     setPassword(e.target.value)
@@ -304,7 +284,8 @@ export default function RegisterPage() {
                         <label>Phone</label>
 
                         <input
-                            type="text"
+                            type="tel"
+                            required
                             value={phone}
                             onChange={(e) =>
                                 setPhone(e.target.value)

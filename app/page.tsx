@@ -5,6 +5,7 @@ import Link from "next/link";
 import { FiEye, FiEyeOff, FiSearch, FiX } from "react-icons/fi";
 import { SHOE_BRANDS } from "@/lib/brands";
 import { isJsonObject, readResponseBody } from "@/lib/api-response";
+import { getBackendAssetUrl } from "@/lib/backend-assets";
 
 type Product = {
   _id: string;
@@ -14,25 +15,6 @@ type Product = {
   category: string;
   description: string;
   image: string;
-};
-
-const getProductImageUrl = (image: string) => {
-  const normalizedImage = image.replace(/\\/g, "/");
-
-  if (/^https?:\/\//i.test(normalizedImage)) {
-    return normalizedImage;
-  }
-
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-
-  if (!backendUrl) {
-    return normalizedImage;
-  }
-
-  return new URL(
-    normalizedImage.replace(/^\/+/, ""),
-    `${backendUrl.replace(/\/+$/, "")}/`
-  ).toString();
 };
 
 export default function Home() {
@@ -458,7 +440,7 @@ export default function Home() {
                         <div className="relative aspect-square w-full bg-[#edf1ed] p-2 sm:p-4">
                           {product.image ? (
                             <img
-                              src={getProductImageUrl(product.image)}
+                              src={getBackendAssetUrl(product.image)}
                               alt={product.name}
                               className="h-full w-full object-contain transition-transform duration-300 hover:scale-[1.03]"
                             />

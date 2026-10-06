@@ -21,7 +21,7 @@ export function isJsonObject(value: unknown): value is Record<string, unknown> {
 }
 
 export function extractHtmlMessage(html: string) {
-  return html
+  const plainText = html
     .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, " ")
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, " ")
     .replace(/<[^>]+>/g, " ")
@@ -31,4 +31,10 @@ export function extractHtmlMessage(html: string) {
     .replace(/&amp;/gi, "&")
     .replace(/\s+/g, " ")
     .trim();
+
+  return plainText
+    .split(/\s+at\s+/i, 1)[0]
+    .replace(/^(?:Error\s*:?\s*)+/i, "")
+    .trim();
 }
+

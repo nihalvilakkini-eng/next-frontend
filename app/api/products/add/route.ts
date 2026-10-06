@@ -1,30 +1,24 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { forwardBackendResponse, getBackendUrl } from "@/lib/api-proxy";
 
 export async function GET() {
   try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/products/`,
-      {
-        cache: "no-store",
-      }
-    );
+    const backendUrl = getBackendUrl();
 
-    const data = await response.json();
-
-    if (!response.ok) {
+    if (!backendUrl) {
       return NextResponse.json(
-        {
-          message: data.message || "Failed to fetch products",
-        },
-        {
-          status: response.status,
-        }
+        { success: false, message: "Backend URL is missing or invalid for this environment" },
+        { status: 500 }
       );
     }
 
-    return NextResponse.json(data, {
-      status: 200,
-    });
+    const response = await fetch(
+      `${backendUrl}/api/products/`,
+      { cache: "no-store" }
+    );
+
+    return forwardBackendResponse(response);
   } catch (error) {
     console.error("Products API error:", error);
 
@@ -35,6 +29,45 @@ export async function GET() {
       {
         status: 500,
       }
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const token = (await cookies()).get("token")?.value;
+
+    if (!token) {
+      return NextResponse.json(
+        { success: false, message: "Authentication required. Please login first." },
+        { status: 401 }
+      );
+    }
+
+    const backendUrl = getBackendUrl();
+
+    if (!backendUrl) {
+      return NextResponse.json(
+        { success: false, message: "Backend URL is missing or invalid for this environment" },
+        { status: 500 }
+      );
+    }
+
+    const formData = await request.formData();
+    const response = await fetch(`${backendUrl}/api/products/add`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+      cache: "no-store",
+    });
+
+    return forwardBackendResponse(response);
+  } catch (error) {
+    console.error("Add product proxy error:", error);
+
+    return NextResponse.json(
+      { success: false, message: "Unable to reach product service" },
+      { status: 502 }
     );
   }
 }

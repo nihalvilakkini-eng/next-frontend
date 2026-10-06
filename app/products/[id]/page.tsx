@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { isJsonObject, readResponseBody } from "@/lib/api-response";
+import { getBackendAssetUrl } from "@/lib/backend-assets";
 
 type Product = {
   _id: string;
@@ -28,17 +30,29 @@ export default function ProductDetails() {
         setLoading(true);
         setError("");
 
-        const response = await fetch(
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/products/${id}`,
-          { cache: "no-store" }
-        );
-        const data = await response.json();
+        const response = await fetch(`/api/products/${encodeURIComponent(id)}`, {
+          cache: "no-store",
+        });
+        const body = await readResponseBody(response);
 
-        if (!response.ok) {
-          throw new Error(data.message || "Product not found");
+        if (!body.isJson || !isJsonObject(body.data)) {
+          throw new Error("Product service returned an invalid response");
         }
 
-        setProduct(data.data || data.product || data);
+        const data = body.data;
+
+        if (!response.ok) {
+          throw new Error(
+            typeof data.message === "string" ? data.message : "Product not found"
+          );
+        }
+
+        const productData = isJsonObject(data.data)
+          ? data.data
+          : isJsonObject(data.product)
+            ? data.product
+            : data;
+        setProduct(productData as Product);
       } catch (error) {
         console.error("Product details error:", error);
         setError("Unable to load product details");
@@ -71,13 +85,7 @@ export default function ProductDetails() {
     );
   }
 
-  const imageUrl = product.image
-    ? /^https?:\/\//i.test(product.image)
-      ? product.image
-      : `${process.env.NEXT_PUBLIC_BACKEND_URL}/${product.image
-          .replace(/\\/g, "/")
-          .replace(/^\/+/, "")}`
-    : "";
+  const imageUrl = product.image ? getBackendAssetUrl(product.image) : "";
 
   return (
     <main className="min-h-screen bg-background px-4 py-8 sm:px-6 sm:py-12">

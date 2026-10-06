@@ -1,13 +1,18 @@
 import { NextResponse } from "next/server";
 import { isJsonObject, readResponseBody } from "@/lib/api-response";
+import { getBackendUrl } from "@/lib/api-proxy";
 
 export async function GET() {
   try {
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/+$/, "");
+    const backendUrl = getBackendUrl();
 
     if (!backendUrl) {
       return NextResponse.json(
-        { success: false, message: "Product service is not configured" },
+        {
+          success: false,
+          message:
+            "Backend URL is missing, invalid, or points to localhost in production. Configure BACKEND_URL and NEXT_PUBLIC_BACKEND_URL in the deployment environment.",
+        },
         { status: 500 }
       );
     }

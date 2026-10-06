@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { forwardBackendResponse, getBackendUrl } from "@/lib/api-proxy";
 
 export async function PUT(
   req: Request,
@@ -18,9 +19,17 @@ export async function PUT(
 
     const { id } = await params;
     const formData = await req.formData();
+    const backendUrl = getBackendUrl();
+
+    if (!backendUrl) {
+      return NextResponse.json(
+        { success: false, message: "Backend URL is missing or invalid for this environment" },
+        { status: 500 }
+      );
+    }
 
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/products/update/${id}`,
+      `${backendUrl}/api/products/update/${encodeURIComponent(id)}`,
       {
         method: "PUT",
         headers: {
@@ -30,11 +39,7 @@ export async function PUT(
       }
     );
 
-    const data = await response.json();
-
-    return NextResponse.json(data, {
-      status: response.status,
-    });
+    return forwardBackendResponse(response);
   } catch (error) {
     console.error("Admin update product error:", error);
 

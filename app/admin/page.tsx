@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { SHOE_BRANDS } from "@/lib/brands";
+import { getBackendAssetUrl } from "@/lib/backend-assets";
 
 export default function AdminDashboard() {
   type Product = {
@@ -547,7 +548,7 @@ export default function AdminDashboard() {
                     <td className="px-4 py-4">
 
                       <img
-                        src={`${process.env.NEXT_PUBLIC_BACKEND_URL}/${product.image}`}
+                        src={getBackendAssetUrl(product.image)}
                         alt={product.name}
                         className="h-16 w-16 rounded-xl object-cover"
                       />

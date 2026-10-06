@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { forwardBackendResponse, getBackendUrl } from "@/lib/api-proxy";
 
 export async function POST(req: Request) {
   try {
@@ -18,10 +19,18 @@ export async function POST(req: Request) {
 
     // Get FormData from admin page
     const formData = await req.formData();
+    const backendUrl = getBackendUrl();
+
+    if (!backendUrl) {
+      return NextResponse.json(
+        { success: false, message: "Backend URL is missing or invalid for this environment" },
+        { status: 500 }
+      );
+    }
 
     // Send product to backend
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/products/add`,
+      `${backendUrl}/api/products/add`,
       {
         method: "POST",
         headers: {
@@ -31,13 +40,7 @@ export async function POST(req: Request) {
       }
     );
 
-    const data = await response.json();
-
-    console.log("BACKEND ADD PRODUCT RESPONSE:", data);
-
-    return NextResponse.json(data, {
-      status: response.status,
-    });
+    return forwardBackendResponse(response);
   } catch (error) {
     console.error("Admin add product error:", error);
 

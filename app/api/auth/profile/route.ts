@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { readResponseBody } from "@/lib/api-response";
+import { forwardBackendResponse, getBackendUrl } from "@/lib/api-proxy";
 
 export async function GET() {
     try {
@@ -18,11 +18,15 @@ export async function GET() {
             );
         }
 
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/+$/, "");
+        const backendUrl = getBackendUrl();
 
         if (!backendUrl) {
             return NextResponse.json(
-                { success: false, message: "Profile service is not configured" },
+                {
+                    success: false,
+                    message:
+                        "Backend URL is missing, invalid, or points to localhost in production. Configure BACKEND_URL and NEXT_PUBLIC_BACKEND_URL in the deployment environment.",
+                },
                 { status: 500 }
             );
         }
@@ -38,21 +42,7 @@ export async function GET() {
             }
         );
 
-        const body = await readResponseBody(response);
-
-        if (!body.isJson) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: `Profile service returned a non-JSON response (HTTP ${response.status})`,
-                },
-                { status: response.ok ? 502 : response.status }
-            );
-        }
-
-        return NextResponse.json(body.data, {
-            status: response.status,
-        });
+        return forwardBackendResponse(response);
 
     } catch (error) {
         console.error("PROFILE API ERROR:", error);
@@ -82,11 +72,15 @@ export async function PUT(request: NextRequest) {
             );
         }
 
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/+$/, "");
+        const backendUrl = getBackendUrl();
 
         if (!backendUrl) {
             return NextResponse.json(
-                { success: false, message: "Profile service is not configured" },
+                {
+                    success: false,
+                    message:
+                        "Backend URL is missing, invalid, or points to localhost in production. Configure BACKEND_URL and NEXT_PUBLIC_BACKEND_URL in the deployment environment.",
+                },
                 { status: 500 }
             );
         }
@@ -105,21 +99,7 @@ export async function PUT(request: NextRequest) {
             }
         );
 
-        const body = await readResponseBody(response);
-
-        if (!body.isJson) {
-            return NextResponse.json(
-                {
-                    success: false,
-                    message: `Profile service returned a non-JSON response (HTTP ${response.status})`,
-                },
-                { status: response.ok ? 502 : response.status }
-            );
-        }
-
-        return NextResponse.json(body.data, {
-            status: response.status,
-        });
+        return forwardBackendResponse(response);
     } catch (error) {
         console.error("PROFILE UPDATE API ERROR:", error);
 

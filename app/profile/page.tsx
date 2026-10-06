@@ -2,6 +2,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getBackendAssetUrl } from "@/lib/backend-assets";
 
 type User = {
   firstName: string;
@@ -10,25 +11,6 @@ type User = {
   phone?: string;
   role?: string;
   profileImage?: string;
-};
-
-const getProfileImageUrl = (image: string) => {
-  const normalizedImage = image.replace(/\\/g, "/");
-
-  if (/^https?:\/\//i.test(normalizedImage)) {
-    return normalizedImage;
-  }
-
-  const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-
-  if (!backendUrl) {
-    return normalizedImage;
-  }
-
-  return new URL(
-    normalizedImage.replace(/^\/+/, ""),
-    `${backendUrl.replace(/\/+$/, "")}/`
-  ).toString();
 };
 
 export default function ProfilePage() {
@@ -155,7 +137,7 @@ export default function ProfilePage() {
 
           {user.profileImage ? (
             <img
-              src={getProfileImageUrl(user.profileImage)}
+              src={getBackendAssetUrl(user.profileImage)}
               alt="Profile"
               className="h-32 w-32 rounded-full object-cover"
             />
