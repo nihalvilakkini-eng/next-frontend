@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { readResponseBody } from "@/lib/api-response";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
     try {
         const cookieStore = await cookies();
 
@@ -17,7 +18,14 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/+$/, "");
+
+        if (!backendUrl) {
+            return NextResponse.json(
+                { success: false, message: "Profile service is not configured" },
+                { status: 500 }
+            );
+        }
 
         const response = await fetch(
             `${backendUrl}/api/auth/profile`,
@@ -30,11 +38,19 @@ export async function GET(request: NextRequest) {
             }
         );
 
-        const data = await response.json();
+        const body = await readResponseBody(response);
 
-        console.log("BACKEND PROFILE RESPONSE:", data);
+        if (!body.isJson) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: `Profile service returned a non-JSON response (HTTP ${response.status})`,
+                },
+                { status: response.ok ? 502 : response.status }
+            );
+        }
 
-        return NextResponse.json(data, {
+        return NextResponse.json(body.data, {
             status: response.status,
         });
 
@@ -66,11 +82,19 @@ export async function PUT(request: NextRequest) {
             );
         }
 
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/+$/, "");
+
+        if (!backendUrl) {
+            return NextResponse.json(
+                { success: false, message: "Profile service is not configured" },
+                { status: 500 }
+            );
+        }
+
         const formData = await request.formData();
 
         const response = await fetch(
-            `${backendUrl}/api/auth/profile`,
+            `${backendUrl}/api/auth/updateprofile`,
             {
                 method: "PUT",
                 headers: {
@@ -81,9 +105,19 @@ export async function PUT(request: NextRequest) {
             }
         );
 
-        const data = await response.json();
+        const body = await readResponseBody(response);
 
-        return NextResponse.json(data, {
+        if (!body.isJson) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    message: `Profile service returned a non-JSON response (HTTP ${response.status})`,
+                },
+                { status: response.ok ? 502 : response.status }
+            );
+        }
+
+        return NextResponse.json(body.data, {
             status: response.status,
         });
     } catch (error) {
