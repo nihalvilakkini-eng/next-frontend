@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { FiEye, FiEyeOff, FiSearch, FiX } from "react-icons/fi";
 import { SHOE_BRANDS } from "@/lib/brands";
+import { isJsonObject, readResponseBody } from "@/lib/api-response";
 
 type Product = {
   _id: string;
@@ -83,14 +84,36 @@ export default function Home() {
           cache: "no-store",
         });
 
-        const data = await response.json();
+        const body = await readResponseBody(response);
 
-        if (!response.ok) {
-          setError(data.message || "Failed to fetch products");
+        if (!body.isJson || !isJsonObject(body.data)) {
+          setError("Product service returned an invalid response");
           return;
         }
 
-        setProducts(data.data || data.products || []);
+        const data = body.data;
+
+        if (!response.ok || data.success === false) {
+          setError(
+            typeof data.message === "string"
+              ? data.message
+              : "Failed to fetch products"
+          );
+          return;
+        }
+
+        const productList = Array.isArray(data.products)
+          ? data.products
+          : Array.isArray(data.data)
+            ? data.data
+            : null;
+
+        if (!productList) {
+          setError("Product service returned an unexpected response");
+          return;
+        }
+
+        setProducts(productList as Product[]);
       } catch (error) {
         console.error("Products fetch error:", error);
         setError("Something went wrong while loading products");
@@ -108,35 +131,38 @@ export default function Home() {
     setLoginMessage("");
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/login`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: loginEmail,
-            password: loginPassword,
-          }),
-        }
-      );
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: loginEmail.trim(),
+          password: loginPassword,
+        }),
+        cache: "no-store",
+      });
 
-      const data = await response.json();
+      const body = await readResponseBody(response);
 
-      console.log("LOGIN RESPONSE:", data);
-
-      if (!response.ok) {
-        setLoginMessage(data.message || "Login failed");
+      if (!body.isJson || !isJsonObject(body.data)) {
+        setLoginMessage("Login service returned an invalid response");
         return;
       }
 
-      const token =
-        data.accessToken ||
-        data.data?.accessToken ||
-        data.data?.token ||
-        data.token;
-      const userRole = data.data?.role;
+      const data = body.data;
+
+      if (!response.ok || data.success === false) {
+        setLoginMessage(
+          typeof data.message === "string" ? data.message : "Login failed"
+        );
+        return;
+      }
+
+      const token = typeof data.accessToken === "string" ? data.accessToken : "";
+      const userRole = isJsonObject(data.data) && typeof data.data.role === "string"
+        ? data.data.role
+        : "";
 
       if (!token || !userRole) {
         setLoginMessage("Login response is missing token or role");
@@ -154,8 +180,15 @@ export default function Home() {
         }),
       });
 
-      if (!cookieResponse.ok) {
-        setLoginMessage("Could not save login session");
+      const cookieBody = await readResponseBody(cookieResponse);
+      const cookieData = isJsonObject(cookieBody.data) ? cookieBody.data : null;
+
+      if (!cookieBody.isJson || !cookieData || !cookieResponse.ok) {
+        setLoginMessage(
+          cookieData && typeof cookieData.message === "string"
+            ? cookieData.message
+            : "Could not save login session"
+        );
         return;
       }
 

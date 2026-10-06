@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { FormEvent } from "react";
 import Link from "next/link";
 import { FiEye, FiEyeOff } from "react-icons/fi";
+import { isJsonObject, readResponseBody } from "@/lib/api-response";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -51,50 +52,35 @@ export default function LoginPage() {
             // =========================
             // LOGIN API
             // =========================
-            const response = await fetch(
-                `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/login`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        email: trimmedEmail,
-                        password,
-                    }),
-                }
-            );
+            const response = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    email: trimmedEmail,
+                    password,
+                }),
+                cache: "no-store",
+            });
 
-            const text = await response.text();
+            const body = await readResponseBody(response);
 
-            console.log("LOGIN STATUS:", response.status);
-            console.log("LOGIN RESPONSE:", text);
-
-            let data;
-
-            try {
-                data = JSON.parse(text);
-            } catch {
-                console.error(
-                    "Backend returned non-JSON:",
-                    text
-                );
-
-                setError("Server returned an invalid response");
+            if (!body.isJson || !isJsonObject(body.data)) {
+                setError("Login service returned an invalid response");
                 return;
             }
 
-            console.log(
-                "LOGIN DATA:",
-                JSON.stringify(data, null, 2)
-            );
+            const data = body.data;
 
             // =========================
             // BACKEND ERROR
             // =========================
-            if (!response.ok) {
+            if (!response.ok || data.success === false) {
                 setError(
-                    data.message || "Invalid email or password"
+                    typeof data.message === "string"
+                        ? data.message
+                        : "Invalid email or password"
                 );
                 return;
             }
@@ -102,19 +88,17 @@ export default function LoginPage() {
             // =========================
             // GET TOKEN
             // =========================
-            const token =
-                data.accessToken ||
-                data.data?.accessToken ||
-                data.data?.token ||
-                data.token;
+            const token = typeof data.accessToken === "string"
+                ? data.accessToken
+                : "";
 
             // =========================
             // GET ROLE
             // =========================
-            const role = data.data?.role || data.role;
-
-            console.log("TOKEN:", token);
-            console.log("ROLE FROM BACKEND:", role);
+            const userData = isJsonObject(data.data) ? data.data : null;
+            const role = userData && typeof userData.role === "string"
+                ? userData.role
+                : "";
 
             if (!token) {
                 setError("Token not received");
@@ -143,36 +127,16 @@ export default function LoginPage() {
                 }
             );
 
-            const cookieText = await cookieResponse.text();
+            const cookieBody = await readResponseBody(cookieResponse);
+            const cookieData = isJsonObject(cookieBody.data)
+                ? cookieBody.data
+                : null;
 
-            console.log(
-                "COOKIE STATUS:",
-                cookieResponse.status
-            );
-
-            console.log(
-                "COOKIE RESPONSE:",
-                cookieText
-            );
-
-            let cookieData;
-
-            try {
-                cookieData = JSON.parse(cookieText);
-            } catch {
-                console.error(
-                    "Cookie API returned non-JSON:",
-                    cookieText
-                );
-
-                setError("Could not set login cookie");
-                return;
-            }
-
-            if (!cookieResponse.ok) {
+            if (!cookieBody.isJson || !cookieData || !cookieResponse.ok) {
                 setError(
-                    cookieData.message ||
-                    "Could not set cookies"
+                    cookieData && typeof cookieData.message === "string"
+                        ? cookieData.message
+                        : "Could not set login cookie"
                 );
                 return;
             }
