@@ -1,6 +1,10 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { forwardBackendResponse, getBackendUrl } from "@/lib/api-proxy";
+import {
+  BACKEND_URL_CONFIG_ERROR,
+  forwardBackendResponse,
+  getBackendUrl,
+} from "@/lib/api-proxy";
 
 export async function POST(req: Request) {
   try {
@@ -23,7 +27,7 @@ export async function POST(req: Request) {
 
     if (!backendUrl) {
       return NextResponse.json(
-        { success: false, message: "Backend URL is missing or invalid for this environment" },
+        { success: false, message: BACKEND_URL_CONFIG_ERROR },
         { status: 500 }
       );
     }

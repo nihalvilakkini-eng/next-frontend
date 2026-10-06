@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { forwardBackendResponse, getBackendUrl } from "@/lib/api-proxy";
+import {
+    BACKEND_URL_CONFIG_ERROR,
+    forwardBackendResponse,
+    getBackendUrl,
+} from "@/lib/api-proxy";
 
 export async function GET() {
     try {
@@ -24,8 +28,7 @@ export async function GET() {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Backend URL is missing, invalid, or points to localhost in production. Configure BACKEND_URL and NEXT_PUBLIC_BACKEND_URL in the deployment environment.",
+                    message: BACKEND_URL_CONFIG_ERROR,
                 },
                 { status: 500 }
             );
@@ -78,8 +81,7 @@ export async function PUT(request: NextRequest) {
             return NextResponse.json(
                 {
                     success: false,
-                    message:
-                        "Backend URL is missing, invalid, or points to localhost in production. Configure BACKEND_URL and NEXT_PUBLIC_BACKEND_URL in the deployment environment.",
+                    message: BACKEND_URL_CONFIG_ERROR,
                 },
                 { status: 500 }
             );
