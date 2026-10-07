@@ -22,12 +22,6 @@ export default function LoginPage() {
 
         const trimmedEmail = email.trim();
 
-        // Required validation
-        if (!trimmedEmail && !password) {
-            setError("Email and password are required");
-            return;
-        }
-
         if (!trimmedEmail) {
             setError("Email is required");
             return;
@@ -67,7 +61,7 @@ export default function LoginPage() {
             const body = await readResponseBody(response);
 
             if (!body.isJson || !isJsonObject(body.data)) {
-                setError("Login service returned an invalid response");
+                setError("Unable to sign in right now. Please try again.");
                 return;
             }
 
@@ -77,10 +71,14 @@ export default function LoginPage() {
             // BACKEND ERROR
             // =========================
             if (!response.ok || data.success === false) {
+                const responseMessage = typeof data.message === "string"
+                    ? data.message
+                    : "";
                 setError(
-                    typeof data.message === "string"
-                        ? data.message
-                        : "Invalid email or password"
+                    response.status === 401 ||
+                    /invalid (?:email|credentials|password)|email or password/i.test(responseMessage)
+                        ? "Invalid email or password"
+                        : responseMessage || "Unable to sign in. Please try again."
                 );
                 return;
             }
@@ -101,12 +99,12 @@ export default function LoginPage() {
                 : "";
 
             if (!token) {
-                setError("Token not received");
+                setError("Unable to sign in right now. Please try again.");
                 return;
             }
 
             if (!role) {
-                setError("Role not received");
+                setError("Unable to sign in right now. Please try again.");
                 return;
             }
 
@@ -133,11 +131,7 @@ export default function LoginPage() {
                 : null;
 
             if (!cookieBody.isJson || !cookieData || !cookieResponse.ok) {
-                setError(
-                    cookieData && typeof cookieData.message === "string"
-                        ? cookieData.message
-                        : "Could not set login cookie"
-                );
+                setError("Unable to sign in right now. Please try again.");
                 return;
             }
 
@@ -164,10 +158,7 @@ export default function LoginPage() {
 
         } catch (error) {
             console.error("Login error:", error);
-
-            setError(
-                "Something went wrong. Please try again."
-            );
+            setError("Unable to connect. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -204,7 +195,7 @@ export default function LoginPage() {
                     Login
                 </h1>
 
-                <form onSubmit={handleLogin}>
+                <form onSubmit={handleLogin} noValidate>
                     {/* EMAIL */}
                     <div
                         style={{
@@ -324,7 +315,7 @@ export default function LoginPage() {
                             fontSize: "14px",
                         }}
                     >
-                        Don't have an account?{" "}
+                        Don&apos;t have an account?{" "}
                        <Link
   href="/register"
   style={{

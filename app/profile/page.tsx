@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { getBackendAssetUrl } from "@/lib/backend-assets";
+import { isJsonObject, readResponseBody } from "@/lib/api-response";
 
 type User = {
   firstName: string;
@@ -20,6 +21,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [phoneError, setPhoneError] = useState("");
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -34,13 +36,17 @@ export default function ProfilePage() {
           credentials: "include",
         });
 
-        const data = await response.json();
+        const body = await readResponseBody(response);
+        const data = isJsonObject(body.data) ? body.data : null;
 
-        if (!response.ok) {
-          throw new Error(data.message || "Failed to load profile");
+        if (!body.isJson || !data || !response.ok) {
+          throw new Error("Failed to load profile");
         }
 
-        const profile = data.data;
+        const profile = isJsonObject(data.data) ? data.data as User : null;
+        if (!profile) {
+          throw new Error("Failed to load profile");
+        }
 
         setUser(profile);
 
@@ -59,6 +65,23 @@ export default function ProfilePage() {
 
   // ================= SAVE PROFILE =================
   const handleSave = async () => {
+    setPhoneError("");
+
+    if (!phone.trim()) {
+      setPhoneError("Phone number is required");
+      return;
+    }
+
+    if (phone && !/^\d+$/.test(phone)) {
+      setPhoneError("Phone number must contain only digits");
+      return;
+    }
+
+    if (phone && phone.length < 10) {
+      setPhoneError("Phone number must be at least 10 digits");
+      return;
+    }
+
     try {
       setSaving(true);
       setMessage("");
@@ -79,14 +102,26 @@ export default function ProfilePage() {
         body: formData,
       });
 
-      const data = await response.json();
+      const body = await readResponseBody(response);
+      const data = isJsonObject(body.data) ? body.data : null;
 
-      if (!response.ok) {
-        setMessage(data.message || "Profile update failed");
+      if (!body.isJson || !data || !response.ok || data.success === false) {
+        const errorMessage = data && typeof data.message === "string"
+          ? data.message
+          : "Profile update failed. Please try again.";
+        if (errorMessage.toLowerCase().includes("phone number")) {
+          setPhoneError(errorMessage);
+        } else {
+          setMessage(errorMessage);
+        }
         return;
       }
 
-      const updatedUser = data.data;
+      const updatedUser = isJsonObject(data.data) ? data.data as User : null;
+      if (!updatedUser) {
+        setMessage("Profile update failed. Please try again.");
+        return;
+      }
 
       setUser(updatedUser);
 
@@ -100,7 +135,7 @@ export default function ProfilePage() {
       setMessage("Profile updated successfully!");
     } catch (error) {
       console.error("Profile update error:", error);
-      setMessage("Something went wrong");
+      setMessage("Unable to connect. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -217,7 +252,12 @@ export default function ProfilePage() {
 
           <input
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            type="tel"
+            inputMode="numeric"
+            onChange={(e) => {
+              setPhone(e.target.value.replace(/\D/g, ""));
+              setPhoneError("");
+            }}
             readOnly={!editing}
             className={`w-full rounded-lg border px-4 py-3 outline-none ${
               editing
@@ -225,6 +265,11 @@ export default function ProfilePage() {
                 : "border-gray-300 bg-gray-100"
             }`}
           />
+          {editing && phoneError && (
+            <p className="mt-2 text-sm text-red-600" role="alert">
+              {phoneError}
+            </p>
+          )}
         </div>
 
         {/* ROLE - NOT EDITABLE */}

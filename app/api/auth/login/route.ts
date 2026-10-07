@@ -4,7 +4,7 @@ import {
   isJsonObject,
   readResponseBody,
 } from "@/lib/api-response";
-import { BACKEND_URL_CONFIG_ERROR, getBackendUrl } from "@/lib/api-proxy";
+import { getBackendUrl } from "@/lib/api-proxy";
 
 export async function POST(request: NextRequest) {
   let credentials: unknown;
@@ -18,13 +18,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  if (
-    !isJsonObject(credentials) ||
-    typeof credentials.email !== "string" ||
-    typeof credentials.password !== "string"
-  ) {
+  if (!isJsonObject(credentials)) {
     return NextResponse.json(
-      { success: false, message: "Email and password are required" },
+      { success: false, message: "Invalid login request" },
+      { status: 400 }
+    );
+  }
+
+  if (typeof credentials.email !== "string" || !credentials.email.trim()) {
+    return NextResponse.json(
+      { success: false, message: "Email is required" },
+      { status: 400 }
+    );
+  }
+
+  if (typeof credentials.password !== "string" || !credentials.password) {
+    return NextResponse.json(
+      { success: false, message: "Password is required" },
       { status: 400 }
     );
   }
@@ -35,7 +45,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: false,
-        message: BACKEND_URL_CONFIG_ERROR,
+        message: "Unable to sign in right now. Please try again.",
       },
       { status: 500 }
     );
@@ -46,7 +56,7 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        email: credentials.email,
+        email: credentials.email.trim(),
         password: credentials.password,
       }),
       cache: "no-store",
@@ -56,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     if (!body.isJson) {
       const message = extractHtmlMessage(body.text);
-      const invalidCredentials = /invalid email or password/i.test(message);
+      const invalidCredentials = /invalid (?:email|credentials|password)|email or password/i.test(message);
 
       console.error(
         "Login service returned a non-JSON response:",
@@ -69,16 +79,36 @@ export async function POST(request: NextRequest) {
           success: false,
           message: invalidCredentials
             ? "Invalid email or password"
-            : `Login service returned a non-JSON response (HTTP ${response.status})`,
+            : "Unable to sign in right now. Please try again.",
         },
-        { status: invalidCredentials ? 401 : response.ok ? 502 : response.status }
+        { status: invalidCredentials || response.status === 401 ? 401 : response.ok ? 502 : response.status }
       );
     }
 
     if (!isJsonObject(body.data)) {
       return NextResponse.json(
-        { success: false, message: "Login service returned an unexpected response" },
+        { success: false, message: "Unable to sign in right now. Please try again." },
         { status: response.ok ? 502 : response.status }
+      );
+    }
+
+    const backendMessage = typeof body.data.message === "string"
+      ? body.data.message
+      : "";
+    if (
+      response.status === 401 ||
+      /invalid (?:email|credentials|password)|email or password/i.test(backendMessage)
+    ) {
+      return NextResponse.json(
+        { success: false, message: "Invalid email or password" },
+        { status: 401 }
+      );
+    }
+
+    if (response.status >= 500) {
+      return NextResponse.json(
+        { success: false, message: "Unable to sign in right now. Please try again." },
+        { status: response.status }
       );
     }
 
@@ -87,7 +117,7 @@ export async function POST(request: NextRequest) {
     console.error("Login proxy error:", error);
 
     return NextResponse.json(
-      { success: false, message: "Unable to reach login service" },
+      { success: false, message: "Unable to connect. Please try again." },
       { status: 502 }
     );
   }

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import {
-    BACKEND_URL_CONFIG_ERROR,
     forwardBackendResponse,
     getBackendUrl,
 } from "@/lib/api-proxy";
@@ -28,7 +27,7 @@ export async function GET() {
             return NextResponse.json(
                 {
                     success: false,
-                    message: BACKEND_URL_CONFIG_ERROR,
+                    message: "Unable to load profile. Please try again.",
                 },
                 { status: 500 }
             );
@@ -45,7 +44,10 @@ export async function GET() {
             }
         );
 
-        return forwardBackendResponse(response);
+        return forwardBackendResponse(
+            response,
+            "Unable to load profile. Please try again."
+        );
 
     } catch (error) {
         console.error("PROFILE API ERROR:", error);
@@ -53,7 +55,7 @@ export async function GET() {
         return NextResponse.json(
             {
                 success: false,
-                message: "Failed to get profile",
+                message: "Unable to load profile. Please try again.",
             },
             { status: 500 }
         );
@@ -81,13 +83,42 @@ export async function PUT(request: NextRequest) {
             return NextResponse.json(
                 {
                     success: false,
-                    message: BACKEND_URL_CONFIG_ERROR,
+                    message: "Profile update could not be completed. Please try again.",
                 },
                 { status: 500 }
             );
         }
 
         const formData = await request.formData();
+        const phone = formData.get("phone");
+
+        if (typeof phone !== "string" || !phone.trim()) {
+            return NextResponse.json(
+                { success: false, message: "Phone number is required" },
+                { status: 400 }
+            );
+        }
+
+        if (typeof phone !== "string") {
+            return NextResponse.json(
+                { success: false, message: "Phone number must contain only digits" },
+                { status: 400 }
+            );
+        }
+
+        if (typeof phone === "string" && phone && /\D/.test(phone)) {
+            return NextResponse.json(
+                { success: false, message: "Phone number must contain only digits" },
+                { status: 400 }
+            );
+        }
+
+        if (typeof phone === "string" && phone.length > 0 && phone.length < 10) {
+            return NextResponse.json(
+                { success: false, message: "Phone number must be at least 10 digits" },
+                { status: 400 }
+            );
+        }
 
         const response = await fetch(
             `${backendUrl}/api/auth/updateprofile`,
@@ -101,14 +132,17 @@ export async function PUT(request: NextRequest) {
             }
         );
 
-        return forwardBackendResponse(response);
+        return forwardBackendResponse(
+            response,
+            "Profile update could not be completed. Please try again."
+        );
     } catch (error) {
         console.error("PROFILE UPDATE API ERROR:", error);
 
         return NextResponse.json(
             {
                 success: false,
-                message: "Failed to update profile",
+                message: "Unable to connect. Please try again.",
             },
             { status: 500 }
         );

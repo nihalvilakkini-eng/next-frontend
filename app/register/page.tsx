@@ -55,6 +55,11 @@ export default function RegisterPage() {
             return;
         }
 
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+            setError("Please enter a valid email address");
+            return;
+        }
+
         if (!password) {
             setError("Password is required");
             return;
@@ -67,6 +72,11 @@ export default function RegisterPage() {
 
         if (!phone.trim()) {
             setError("Phone number is required");
+            return;
+        }
+
+        if (!/^\d{10}$/.test(phone)) {
+            setError("Phone number must be 10 digits");
             return;
         }
 
@@ -125,9 +135,7 @@ export default function RegisterPage() {
                 error
             );
 
-            setError(
-                "Unable to connect to server. Please check whether backend is running."
-            );
+            setError("Unable to connect. Please try again.");
         } finally {
             setLoading(false);
         }
@@ -164,7 +172,7 @@ export default function RegisterPage() {
                     Register
                 </h1>
 
-                <form onSubmit={handleRegister}>
+                <form onSubmit={handleRegister} noValidate>
 
                     {/* FIRST NAME */}
                     <div style={{ marginBottom: "15px" }}>
@@ -285,10 +293,12 @@ export default function RegisterPage() {
 
                         <input
                             type="tel"
+                            inputMode="numeric"
+                            pattern="[0-9]{10}"
                             required
                             value={phone}
                             onChange={(e) =>
-                                setPhone(e.target.value)
+                                setPhone(e.target.value.replace(/\D/g, ""))
                             }
                             placeholder="Enter phone number"
                             style={{

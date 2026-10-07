@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isJsonObject, readResponseBody } from "@/lib/api-response";
-import { BACKEND_URL_CONFIG_ERROR, getBackendUrl } from "@/lib/api-proxy";
+import { getBackendUrl } from "@/lib/api-proxy";
 
 export async function GET() {
   try {
@@ -10,9 +10,9 @@ export async function GET() {
       return NextResponse.json(
         {
           success: false,
-          message: BACKEND_URL_CONFIG_ERROR,
+          message: "Products are temporarily unavailable. Please try again later.",
         },
-        { status: 500 }
+        { status: 502 }
       );
     }
 
@@ -36,7 +36,7 @@ export async function GET() {
       return NextResponse.json(
         {
           success: false,
-          message: `Product service returned a non-JSON response (HTTP ${response.status})`,
+          message: "Products are temporarily unavailable. Please try again later.",
         },
         { status: response.ok ? 502 : response.status }
       );
@@ -78,10 +78,11 @@ export async function GET() {
 
     return NextResponse.json(
       {
-        message: "Failed to fetch products",
+        success: false,
+        message: "Products are temporarily unavailable. Please try again later.",
       },
       {
-        status: 500,
+        status: 502,
       }
     );
   }

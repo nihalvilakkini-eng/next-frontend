@@ -49,8 +49,18 @@ export function getBackendUrl() {
   return null;
 }
 
-export async function forwardBackendResponse(response: Response) {
+export async function forwardBackendResponse(
+  response: Response,
+  fallbackMessage?: string
+) {
   const body = await readResponseBody(response);
+
+  if (fallbackMessage && response.status >= 500) {
+    return NextResponse.json(
+      { success: false, message: fallbackMessage },
+      { status: response.status }
+    );
+  }
 
   if (body.isJson) {
     return NextResponse.json(body.data, { status: response.status });
@@ -69,6 +79,7 @@ export async function forwardBackendResponse(response: Response) {
     {
       success: false,
       message:
+        fallbackMessage ||
         message ||
         `Backend returned a non-JSON response (HTTP ${response.status})`,
       backendStatus: response.status,
